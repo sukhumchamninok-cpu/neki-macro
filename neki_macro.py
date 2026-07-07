@@ -487,9 +487,21 @@ class MacroEngine:
         self.macros = []
         self.running = False
         self.log_callback = log_callback
+        self._registered_handles = []  # เก็บ handle ของ hotkey ที่ลงทะเบียนไว้เอง
 
     def set_macros(self, macros):
         self.macros = macros
+
+    def _unregister_all(self):
+        """ยกเลิก hotkey ที่เราลงทะเบียนไว้เอง ทีละตัว (เลี่ยงบั๊กของ keyboard.unhook_all_hotkeys())"""
+        for handle in self._registered_handles:
+            try:
+                keyboard.remove_hotkey(handle)
+            except (KeyError, ValueError):
+                pass
+            except Exception:
+                pass
+        self._registered_handles = []
 
     def start(self):
         if keyboard is None:
@@ -497,10 +509,13 @@ class MacroEngine:
             self.running = False
             return
         try:
-            keyboard.unhook_all_hotkeys()
+            self._unregister_all()
             for macro in self.macros:
                 if macro.get("enabled", True) and macro.get("trigger"):
-                    keyboard.add_hotkey(macro["trigger"], lambda m=macro: self._run_macro(m), suppress=False)
+                    handle = keyboard.add_hotkey(
+                        macro["trigger"], lambda m=macro: self._run_macro(m), suppress=False
+                    )
+                    self._registered_handles.append(handle)
             self.running = True
             self.log_callback("▶ เริ่มทำงานแล้ว (Engine Running) — กดปุ่ม Trigger เพื่อใช้งานมาโคร")
         except Exception as e:
@@ -513,7 +528,7 @@ class MacroEngine:
 
     def stop(self):
         if keyboard is not None:
-            keyboard.unhook_all_hotkeys()
+            self._unregister_all()
         self.running = False
         self.log_callback("⏸ หยุดทำงานแล้ว (Engine Stopped)")
 
