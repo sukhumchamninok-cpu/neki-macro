@@ -1,0 +1,35 @@
+name: Build Neki Macro EXE
+
+# ทำงานอัตโนมัติทุกครั้งที่ push ขึ้น branch main
+# หรือกดรันเองได้จากแท็บ Actions (workflow_dispatch)
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller customtkinter keyboard tkinterdnd2
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed --name "NekiMacro" --collect-all tkinterdnd2 --clean neki_macro.py
+
+      - name: Upload EXE as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NekiMacro-Windows-EXE
+          path: dist/NekiMacro.exe
