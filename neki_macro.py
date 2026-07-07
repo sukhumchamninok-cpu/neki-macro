@@ -494,13 +494,22 @@ class MacroEngine:
     def start(self):
         if keyboard is None:
             self.log_callback("⚠ ไม่พบไลบรารี 'keyboard' กรุณาติดตั้งก่อนใช้งาน (pip install keyboard)")
+            self.running = False
             return
-        self.running = True
-        keyboard.unhook_all_hotkeys()
-        for macro in self.macros:
-            if macro.get("enabled", True) and macro.get("trigger"):
-                keyboard.add_hotkey(macro["trigger"], lambda m=macro: self._run_macro(m), suppress=False)
-        self.log_callback("▶ เริ่มทำงานแล้ว (Engine Running) — กดปุ่ม Trigger เพื่อใช้งานมาโคร")
+        try:
+            keyboard.unhook_all_hotkeys()
+            for macro in self.macros:
+                if macro.get("enabled", True) and macro.get("trigger"):
+                    keyboard.add_hotkey(macro["trigger"], lambda m=macro: self._run_macro(m), suppress=False)
+            self.running = True
+            self.log_callback("▶ เริ่มทำงานแล้ว (Engine Running) — กดปุ่ม Trigger เพื่อใช้งานมาโคร")
+        except Exception as e:
+            self.running = False
+            self.log_callback(
+                f"❌ เริ่มทำงานไม่สำเร็จ: {e}\n"
+                f"   💡 สาเหตุที่พบบ่อย: ต้องรันโปรแกรม/exe แบบ \"Run as administrator\" "
+                f"เพื่อให้ไลบรารี keyboard ดักจับปุ่มได้ (โดยเฉพาะบน Windows)"
+            )
 
     def stop(self):
         if keyboard is not None:
@@ -713,7 +722,16 @@ class MacrosView(ctk.CTkFrame):
         else:
             self.app.engine.set_macros(self.app.macros)
             self.app.engine.start()
-            self.engine_btn.configure(text="⏸  หยุดทำงาน", fg_color=DANGER, hover_color=DANGER_HOVER)
+            if self.app.engine.running:
+                self.engine_btn.configure(text="⏸  หยุดทำงาน", fg_color=DANGER, hover_color=DANGER_HOVER)
+            else:
+                messagebox.showerror(
+                    APP_TITLE,
+                    "ไม่สามารถเริ่มทำงาน Engine ได้\n\n"
+                    "สาเหตุที่พบบ่อยที่สุด: ต้องรันโปรแกรมแบบ \"Run as administrator\" "
+                    "(คลิกขวาที่ไฟล์ .exe หรือเปิด Command Prompt/Terminal แบบ Admin ก่อนรัน python)\n\n"
+                    "ดูรายละเอียด error เต็มๆ ได้ที่ช่อง Log กิจกรรมด้านขวา"
+                )
 
 
 # ---------------------------------------------------------------------------
